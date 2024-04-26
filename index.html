@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Application</title>
+    <style>
+        #chat {
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            overflow: auto;
+            border: 1px solid #ccc;
+            padding: 5px;
+        }
+        .message {
+            padding: 5px;
+            margin: 5px;
+            border-radius: 5px;
+            width: fit-content;
+        }
+        .left {
+            align-self: flex-start;
+            background-color: #f0f0f0;
+        }
+        .right {
+            align-self: flex-end;
+            background-color: #ddf;
+        }
+        #messageBox {
+            display: flex;
+            margin-top: 10px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat"></div>
+    <div id="messageBox">
+        <input type="text" id="messageInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        let clientName = prompt("Enter your client name:");
+        let ws = new WebSocket(`ws://localhost:8080/ws/${clientName}`);
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const messageClass = data.clientId === clientName ? 'right' : 'left';
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message", messageClass);
+            // Include the client's name in the message display
+            messageElement.textContent = `${data.clientId}: ${data.message}`;
+            document.getElementById("chat").appendChild(messageElement);
+        };
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const message = input.value.trim(); // Trim the message to remove any extra whitespace
+
+            if (message === '') {
+                return; // Don't send empty messages
+            }
+
+            input.value = '';  // Clear the input field after capturing the value
+
+            // Immediately display the message in the chat on the right side
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message", "right");
+            messageElement.textContent = `${clientName}: ${message}`;
+            document.getElementById("chat").appendChild(messageElement);
+
+            // Scroll to the bottom of the chat window
+            const chat = document.getElementById("chat");
+            chat.scrollTop = chat.scrollHeight;
+
+            // Prepare the data to be sent in the request body
+            const data = {
+                clientId: clientName,
+                message: message
+            };
+
+            // Use Fetch API to send a POST request to the server
+            fetch('http://localhost:8080/send/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)  // Convert the JavaScript object to a JSON string
+            })
+            .then(response => response.json())  // Convert the response data to JSON
+            .then(data => {
+                console.log('Success:', data);  // Handle the success response
+            })
+            .catch((error) => {
+                console.error('Error:', error);  // Handle any errors
+            });
+        }
+
+    </script>
+</body>
+</html>
